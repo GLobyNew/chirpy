@@ -18,11 +18,11 @@ func handleReadiness(w http.ResponseWriter, r *http.Request) {
 func main() {
 	var apiCfg apiConfig
 	serveMux := http.NewServeMux()
-	serveMux.HandleFunc("GET /api/healthz", handleReadiness)
+	serveMux.HandleFunc("GET /admin/healthz", handleReadiness)
 	appHandler := http.StripPrefix("/app/", http.FileServer(http.Dir("./app/")))
 	serveMux.Handle("/app/", apiCfg.middleWareMetricsInc(appHandler))
-	serveMux.HandleFunc("GET /api/metrics", apiCfg.handleMetrics)
-	serveMux.HandleFunc("POST /api/reset", apiCfg.handleReset)
+	serveMux.HandleFunc("GET /admin/metrics", apiCfg.handleMetrics)
+	serveMux.HandleFunc("POST /admin/reset", apiCfg.handleReset)
 	server := http.Server{
 		Addr:    ":8080",
 		Handler: serveMux,
