@@ -19,7 +19,7 @@ func unProfaneChirp(s string) string {
 	for i, word := range splittedStr {
 		for _, prWord := range forbiddenWords {
 			if strings.ToLower(word) == prWord {
-				replaceWord := strings.Repeat("*", len([]rune(splittedStr[i])))
+				replaceWord := "****"
 				splittedStr[i] = replaceWord
 			}
 		}
