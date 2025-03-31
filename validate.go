@@ -2,8 +2,8 @@ package main
 
 import (
 	"encoding/json"
-	"log"
 	"net/http"
+	"strings"
 )
 
 const (
@@ -13,73 +13,56 @@ const (
 	errorBodyIsEmpty    = "Body is empty"
 )
 
+func unProfaneChirp(s string) string {
+	var forbiddenWords = [...]string{"kerfuffle", "sharbert", "fornax"}
+	splittedStr := strings.Split(s, " ")
+	for i, word := range splittedStr {
+		for _, prWord := range forbiddenWords {
+			if strings.ToLower(word) == prWord {
+				replaceWord := strings.Repeat("*", len([]rune(splittedStr[i])))
+				splittedStr[i] = replaceWord
+			}
+		}
+	}
+	return strings.Join(splittedStr, " ")
+}
+
 func handleValidateChirp(w http.ResponseWriter, r *http.Request) {
+
 	type parameters struct {
 		Body string `json:"body"`
 	}
-	type returnValid struct {
-		Valid bool `json:"valid"`
-	}
-	type returnError struct {
-		ErrorStr string `json:"error"`
+	type clBody struct {
+		ClearedBody string `json:"cleaned_body"`
 	}
 
+	// Try decode request
 	decoder := json.NewDecoder(r.Body)
 	params := parameters{}
 	err := decoder.Decode(&params)
 	if err != nil {
-		data, err := json.Marshal(returnError{
-			ErrorStr: errorGeneric,
-		})
-		if err != nil {
-			log.Printf("Error marshalling JSON: %s", err)
-			w.WriteHeader(http.StatusInternalServerError)
-			return
-		}
-		w.Header().Set("Content-Type", "application/json")
-		log.Printf("Error decoding parameters: %s", err)
-		w.WriteHeader(http.StatusInternalServerError)
-		w.Write(data)
-		return
-	}
-	if len(params.Body) == 0 {
-		data, err := json.Marshal(returnError{
-			ErrorStr: errorBodyIsEmpty,
-		})
-		if err != nil {
-			log.Printf("Error marshalling JSON: %s", err)
-			w.WriteHeader(http.StatusInternalServerError)
-			return
-		}
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write(data)
-		return
-	}
-	if len(params.Body) > maxChirpyLen {
-		data, err := json.Marshal(returnError{
-			ErrorStr: errorChirpIsTooLong,
-		})
-		if err != nil {
-			log.Printf("Error marshalling JSON: %s", err)
-			w.WriteHeader(http.StatusInternalServerError)
-			return
-		}
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write(data)
+		respondWithError(w, http.StatusInternalServerError, "error while decoding request")
 		return
 	}
 
-	data, err := json.Marshal(returnValid{
-		Valid: true,
-	})
-	if err != nil {
-		log.Printf("Error marshalling JSON: %s", err)
-		w.WriteHeader(http.StatusInternalServerError)
+	chirp := params.Body
+
+	// Check if not empty
+	if len(chirp) == 0 {
+		respondWithError(w, http.StatusBadRequest, "chirp is empty")
 		return
 	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	w.Write(data)
+
+	// Check max against max length
+	if len(chirp) > maxChirpyLen {
+		respondWithError(w, http.StatusBadRequest, "chirp lenght is more than 140 symbols")
+		return
+	}
+
+	// Check against forbidden words
+	payload := clBody{
+		ClearedBody: unProfaneChirp(chirp),
+	}
+	respondWithJSON(w, http.StatusOK, payload)
+
 }
