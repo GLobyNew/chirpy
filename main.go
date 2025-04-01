@@ -1,12 +1,20 @@
 package main
 
 import (
+	"database/sql"
+	"log"
 	"net/http"
+	"os"
 	"sync/atomic"
+
+	"github.com/GLobyNew/chirpy/internal/database"
+	"github.com/joho/godotenv"
+	_ "github.com/lib/pq"
 )
 
 type apiConfig struct {
 	fileserverHits atomic.Int32
+	db             *database.Queries
 }
 
 func handleReadiness(w http.ResponseWriter, r *http.Request) {
@@ -16,7 +24,16 @@ func handleReadiness(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
-	var apiCfg apiConfig
+	godotenv.Load()
+	dbURL := os.Getenv("DB_URL")
+	db, err := sql.Open("postgres", dbURL)
+	if err != nil {
+		log.Fatalln("error openning db")
+	}
+	dbQueries := database.New(db)
+	apiCfg := apiConfig{
+		db: dbQueries,
+	}
 	serveMux := http.NewServeMux()
 	serveMux.HandleFunc("GET /admin/healthz", handleReadiness)
 	appHandler := http.StripPrefix("/app/", http.FileServer(http.Dir("./app/")))
