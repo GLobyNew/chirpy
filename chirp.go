@@ -14,7 +14,7 @@ const (
 	maxChirpyLen        = 140
 	errorGeneric        = "Something went wrong"
 	errorChirpIsTooLong = "Chirp is too long"
-	errorBodyIsEmpty    = "Body is empty"
+	errorChirpIsEmpty   = "Chirp is empty"
 )
 
 type Chirp struct {
@@ -48,7 +48,7 @@ func (cfg *apiConfig) handleGetChirps(w http.ResponseWriter, r *http.Request) {
 
 	chirps, err := mapDatabaseChirpsToChirps(dbChirps)
 	if err != nil {
-		respondWithError(w, http.StatusInternalServerError, "error mapping chirps")
+		respondWithError(w, http.StatusInternalServerError, http.StatusText(http.StatusInternalServerError))
 		return
 	}
 
@@ -66,7 +66,7 @@ func (cfg *apiConfig) handleChirps(w http.ResponseWriter, r *http.Request) {
 	params := parameters{}
 	err := decoder.Decode(&params)
 	if err != nil {
-		respondWithError(w, http.StatusInternalServerError, "error while decoding request")
+		respondWithError(w, http.StatusInternalServerError, http.StatusText(http.StatusInternalServerError))
 		return
 	}
 
@@ -74,13 +74,12 @@ func (cfg *apiConfig) handleChirps(w http.ResponseWriter, r *http.Request) {
 
 	// Check if not empty
 	if len(chirp) == 0 {
-		respondWithError(w, http.StatusBadRequest, "chirp is empty")
-		return
+		respondWithError(w, http.StatusBadRequest, errorChirpIsEmpty)
 	}
 
 	// Check max against max length
 	if len(chirp) > maxChirpyLen {
-		respondWithError(w, http.StatusBadRequest, "chirp lenght is more than 140 symbols")
+		respondWithError(w, http.StatusBadRequest, errorChirpIsTooLong)
 		return
 	}
 
