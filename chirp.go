@@ -4,6 +4,10 @@ import (
 	"encoding/json"
 	"net/http"
 	"strings"
+	"time"
+
+	"github.com/GLobyNew/chirpy/internal/database"
+	"github.com/google/uuid"
 )
 
 const (
@@ -12,6 +16,14 @@ const (
 	errorChirpIsTooLong = "Chirp is too long"
 	errorBodyIsEmpty    = "Body is empty"
 )
+
+type Chirp struct {
+	ID        uuid.UUID `json:"id"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+	Body      string    `json:"body"`
+	UserID    uuid.UUID `json:"user_id"`
+}
 
 func unProfaneChirp(s string) string {
 	var forbiddenWords = [...]string{"kerfuffle", "sharbert", "fornax"}
@@ -27,13 +39,10 @@ func unProfaneChirp(s string) string {
 	return strings.Join(splittedStr, " ")
 }
 
-func handleValidateChirp(w http.ResponseWriter, r *http.Request) {
-
+func (cfg *apiConfig) handleChirps(w http.ResponseWriter, r *http.Request) {
 	type parameters struct {
-		Body string `json:"body"`
-	}
-	type clBody struct {
-		ClearedBody string `json:"cleaned_body"`
+		Body   string    `json:"body"`
+		UserID uuid.UUID `json:"user_id"`
 	}
 
 	// Try decode request
@@ -45,7 +54,7 @@ func handleValidateChirp(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	chirp := params.Body
+	chirp := unProfaneChirp(params.Body)
 
 	// Check if not empty
 	if len(chirp) == 0 {
@@ -59,10 +68,22 @@ func handleValidateChirp(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Check against forbidden words
-	payload := clBody{
-		ClearedBody: unProfaneChirp(chirp),
+	createdChirp, err := cfg.db.CreateChirp(r.Context(), database.CreateChirpParams{
+		Body:   chirp,
+		UserID: params.UserID,
+	})
+
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, http.StatusText(http.StatusInternalServerError))
+		return
 	}
-	respondWithJSON(w, http.StatusOK, payload)
+
+	respondWithJSON(w, http.StatusCreated, Chirp{
+		ID:        createdChirp.ID,
+		CreatedAt: createdChirp.CreatedAt,
+		UpdatedAt: createdChirp.UpdatedAt,
+		Body:      createdChirp.Body,
+		UserID:    createdChirp.UserID,
+	})
 
 }

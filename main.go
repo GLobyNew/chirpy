@@ -43,8 +43,8 @@ func main() {
 	serveMux.Handle("/app/", cfg.middleWareMetricsInc(appHandler))
 	serveMux.HandleFunc("GET /admin/metrics", cfg.handleMetrics)
 	serveMux.HandleFunc("POST /admin/reset", cfg.handleReset)
-	serveMux.HandleFunc("POST /api/validate_chirp", handleValidateChirp)
 	serveMux.HandleFunc("POST /api/users", cfg.handleUser)
+	serveMux.HandleFunc("POST /api/chirps", cfg.handleChirps)
 	server := http.Server{
 		Addr:    ":8080",
 		Handler: serveMux,
