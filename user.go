@@ -4,18 +4,20 @@ import (
 	"encoding/json"
 	"net/http"
 	"time"
+
+	"github.com/google/uuid"
 )
+
+type User struct {
+	ID        uuid.UUID `json:"id"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+	Email     string    `json:"email"`
+}
 
 func (cfg *apiConfig) handleUser(w http.ResponseWriter, r *http.Request) {
 	type inParams struct {
 		Email string `json:"email"`
-	}
-
-	type response struct {
-		ID        string    `json:"id"`
-		CreatedAt time.Time `json:"created_at"`
-		UpdatedAt time.Time `json:"updated_at"`
-		Email     string    `json:"email"`
 	}
 
 	// Try decode request
@@ -29,13 +31,13 @@ func (cfg *apiConfig) handleUser(w http.ResponseWriter, r *http.Request) {
 
 	user, err := cfg.db.CreateUser(r.Context(), params.Email)
 
-	payload := response{
-		ID:        user.ID.String(),
+	payload := User{
+		ID:        user.ID,
 		CreatedAt: user.CreatedAt,
 		UpdatedAt: user.UpdatedAt,
 		Email:     user.Email,
 	}
 
-	respondWithJSON(w, http.StatusOK, payload)
+	respondWithJSON(w, http.StatusCreated, payload)
 
 }

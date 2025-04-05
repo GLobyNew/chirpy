@@ -15,6 +15,7 @@ import (
 type apiConfig struct {
 	fileserverHits atomic.Int32
 	db             *database.Queries
+	platform       string
 }
 
 func handleReadiness(w http.ResponseWriter, r *http.Request) {
@@ -31,8 +32,10 @@ func main() {
 		log.Fatalln("error openning db")
 	}
 	dbQueries := database.New(db)
+	platform := os.Getenv("PLATFORM")
 	cfg := apiConfig{
-		db: dbQueries,
+		db:       dbQueries,
+		platform: platform,
 	}
 	serveMux := http.NewServeMux()
 	serveMux.HandleFunc("GET /admin/healthz", handleReadiness)
@@ -41,7 +44,7 @@ func main() {
 	serveMux.HandleFunc("GET /admin/metrics", cfg.handleMetrics)
 	serveMux.HandleFunc("POST /admin/reset", cfg.handleReset)
 	serveMux.HandleFunc("POST /api/validate_chirp", handleValidateChirp)
-	serveMux.HandleFunc("POST /api/user", cfg.handleUser)
+	serveMux.HandleFunc("POST /api/users", cfg.handleUser)
 	server := http.Server{
 		Addr:    ":8080",
 		Handler: serveMux,

@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"net/http"
 )
 
@@ -20,7 +21,16 @@ func (cfg *apiConfig) handleMetrics(w http.ResponseWriter, r *http.Request) {
 }
 
 func (cfg *apiConfig) handleReset(w http.ResponseWriter, r *http.Request) {
+	if cfg.platform != "dev" {
+		respondWithError(w, http.StatusForbidden, http.StatusText(http.StatusForbidden))
+		return
+	}
+	err := cfg.db.DeleteAllUsers(r.Context())
+	if err != nil {
+		log.Println("error while deleting all users during reset")
+	}
 	cfg.fileserverHits.Store(0)
+
 	w.Header().Add("Content-Type", "text/plain; charset=utf-8")
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte(http.StatusText(http.StatusOK)))
