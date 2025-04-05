@@ -39,6 +39,22 @@ func unProfaneChirp(s string) string {
 	return strings.Join(splittedStr, " ")
 }
 
+func (cfg *apiConfig) handleGetChirps(w http.ResponseWriter, r *http.Request) {
+	dbChirps, err := cfg.db.GetAllChirps(r.Context())
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, http.StatusText(http.StatusInternalServerError))
+		return
+	}
+
+	chirps, err := mapDatabaseChirpsToChirps(dbChirps)
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "error mapping chirps")
+		return
+	}
+
+	respondWithJSON(w, http.StatusOK, chirps)
+}
+
 func (cfg *apiConfig) handleChirps(w http.ResponseWriter, r *http.Request) {
 	type parameters struct {
 		Body   string    `json:"body"`
@@ -86,4 +102,21 @@ func (cfg *apiConfig) handleChirps(w http.ResponseWriter, r *http.Request) {
 		UserID:    createdChirp.UserID,
 	})
 
+}
+
+func mapDatabaseChirpsToChirps(dbChirps []database.Chirp) ([]Chirp, error) {
+	// Marshal the database chirps into JSON
+	data, err := json.Marshal(dbChirps)
+	if err != nil {
+		return nil, err
+	}
+
+	// Unmarshal the JSON into the main Chirp struct
+	var chirps []Chirp
+	err = json.Unmarshal(data, &chirps)
+	if err != nil {
+		return nil, err
+	}
+
+	return chirps, nil
 }
