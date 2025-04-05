@@ -31,16 +31,17 @@ func main() {
 		log.Fatalln("error openning db")
 	}
 	dbQueries := database.New(db)
-	apiCfg := apiConfig{
+	cfg := apiConfig{
 		db: dbQueries,
 	}
 	serveMux := http.NewServeMux()
 	serveMux.HandleFunc("GET /admin/healthz", handleReadiness)
 	appHandler := http.StripPrefix("/app/", http.FileServer(http.Dir("./app/")))
-	serveMux.Handle("/app/", apiCfg.middleWareMetricsInc(appHandler))
-	serveMux.HandleFunc("GET /admin/metrics", apiCfg.handleMetrics)
-	serveMux.HandleFunc("POST /admin/reset", apiCfg.handleReset)
+	serveMux.Handle("/app/", cfg.middleWareMetricsInc(appHandler))
+	serveMux.HandleFunc("GET /admin/metrics", cfg.handleMetrics)
+	serveMux.HandleFunc("POST /admin/reset", cfg.handleReset)
 	serveMux.HandleFunc("POST /api/validate_chirp", handleValidateChirp)
+	serveMux.HandleFunc("POST /api/user", cfg.handleUser)
 	server := http.Server{
 		Addr:    ":8080",
 		Handler: serveMux,
