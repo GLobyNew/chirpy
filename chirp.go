@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"log"
 	"net/http"
 	"strings"
 	"time"
@@ -39,6 +40,29 @@ func unProfaneChirp(s string) string {
 	return strings.Join(splittedStr, " ")
 }
 
+func (cfg *apiConfig) handleGetChirp(w http.ResponseWriter, r *http.Request) {
+	chirpID, err := uuid.Parse(r.PathValue("chirpID"))
+	if err != nil {
+		log.Println("error while parsing UUID in path value in GetChirp")
+		respondWithError(w, http.StatusInternalServerError, http.StatusText(http.StatusInternalServerError))
+		return
+	}
+	foundChirp, err := cfg.db.GetChirpByID(r.Context(), chirpID)
+	if err != nil {
+		log.Println("No chirp was found")
+		respondWithError(w, http.StatusNotFound, "Chirp not found")
+		return
+	}
+	structChirp, err := mapDatabaseChirpToChirps(foundChirp)
+	if err != nil {
+		log.Println("error while marshalling/unmarshalling db chirp to go struct chirp")
+		respondWithError(w, http.StatusInternalServerError, http.StatusText(http.StatusInternalServerError))
+		return
+	}
+	respondWithJSON(w, http.StatusOK, structChirp)
+
+}
+
 func (cfg *apiConfig) handleGetChirps(w http.ResponseWriter, r *http.Request) {
 	dbChirps, err := cfg.db.GetAllChirps(r.Context())
 	if err != nil {
@@ -55,7 +79,7 @@ func (cfg *apiConfig) handleGetChirps(w http.ResponseWriter, r *http.Request) {
 	respondWithJSON(w, http.StatusOK, chirps)
 }
 
-func (cfg *apiConfig) handleChirps(w http.ResponseWriter, r *http.Request) {
+func (cfg *apiConfig) handleChirpCreation(w http.ResponseWriter, r *http.Request) {
 	type parameters struct {
 		Body   string    `json:"body"`
 		UserID uuid.UUID `json:"user_id"`
@@ -93,13 +117,12 @@ func (cfg *apiConfig) handleChirps(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	respondWithJSON(w, http.StatusCreated, Chirp{
-		ID:        createdChirp.ID,
-		CreatedAt: createdChirp.CreatedAt,
-		UpdatedAt: createdChirp.UpdatedAt,
-		Body:      createdChirp.Body,
-		UserID:    createdChirp.UserID,
-	})
+	structChirp, err := mapDatabaseChirpToChirps(createdChirp)
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, http.StatusText(http.StatusInternalServerError))
+		return
+	}
+	respondWithJSON(w, http.StatusCreated, structChirp)
 
 }
 
@@ -118,4 +141,21 @@ func mapDatabaseChirpsToChirps(dbChirps []database.Chirp) ([]Chirp, error) {
 	}
 
 	return chirps, nil
+}
+
+func mapDatabaseChirpToChirps(dbChirp database.Chirp) (Chirp, error) {
+	// Marshal the database chirps into JSON
+	data, err := json.Marshal(dbChirp)
+	if err != nil {
+		return Chirp{}, err
+	}
+
+	// Unmarshal the JSON into the main Chirp struct
+	var chirp Chirp
+	err = json.Unmarshal(data, &chirp)
+	if err != nil {
+		return Chirp{}, err
+	}
+
+	return chirp, nil
 }
