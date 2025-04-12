@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/GLobyNew/chirpy/internal/auth"
 	"github.com/GLobyNew/chirpy/internal/database"
 	"github.com/google/uuid"
 )
@@ -53,12 +54,14 @@ func (cfg *apiConfig) handleGetChirp(w http.ResponseWriter, r *http.Request) {
 		respondWithError(w, http.StatusNotFound, "Chirp not found")
 		return
 	}
-	structChirp, err := mapDatabaseChirpToChirps(foundChirp)
-	if err != nil {
-		log.Println("error while marshalling/unmarshalling db chirp to go struct chirp")
-		respondWithError(w, http.StatusInternalServerError, http.StatusText(http.StatusInternalServerError))
-		return
+	structChirp := Chirp{
+		ID:        foundChirp.ID,
+		CreatedAt: foundChirp.CreatedAt,
+		UpdatedAt: foundChirp.UpdatedAt,
+		Body:      foundChirp.Body,
+		UserID:    foundChirp.UserID,
 	}
+	
 	respondWithJSON(w, http.StatusOK, structChirp)
 
 }
@@ -80,15 +83,27 @@ func (cfg *apiConfig) handleGetChirps(w http.ResponseWriter, r *http.Request) {
 }
 
 func (cfg *apiConfig) handleChirpCreation(w http.ResponseWriter, r *http.Request) {
+	tokenString, err := auth.GetBearerToken(r.Header)
+	if err != nil {
+		log.Printf("can't get bearer token : %v", err)
+		respondWithError(w, http.StatusInternalServerError, http.StatusText(http.StatusInternalServerError))
+		return
+	}
+	userID, err := auth.ValidateJWT(tokenString, cfg.jwtSecret)
+	if err != nil {
+		log.Printf("can't validate JWT: %v", err)
+		respondWithError(w, http.StatusUnauthorized, http.StatusText(http.StatusUnauthorized))
+		return
+	}
+
 	type parameters struct {
-		Body   string    `json:"body"`
-		UserID uuid.UUID `json:"user_id"`
+		Body string `json:"body"`
 	}
 
 	// Try decode request
 	decoder := json.NewDecoder(r.Body)
 	params := parameters{}
-	err := decoder.Decode(&params)
+	err = decoder.Decode(&params)
 	if err != nil {
 		respondWithError(w, http.StatusInternalServerError, http.StatusText(http.StatusInternalServerError))
 		return
@@ -109,7 +124,7 @@ func (cfg *apiConfig) handleChirpCreation(w http.ResponseWriter, r *http.Request
 
 	createdChirp, err := cfg.db.CreateChirp(r.Context(), database.CreateChirpParams{
 		Body:   chirp,
-		UserID: params.UserID,
+		UserID: userID,
 	})
 
 	if err != nil {
@@ -117,11 +132,14 @@ func (cfg *apiConfig) handleChirpCreation(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	structChirp, err := mapDatabaseChirpToChirps(createdChirp)
-	if err != nil {
-		respondWithError(w, http.StatusInternalServerError, http.StatusText(http.StatusInternalServerError))
-		return
+	structChirp := Chirp{
+		ID:        createdChirp.ID,
+		CreatedAt: createdChirp.CreatedAt,
+		UpdatedAt: createdChirp.UpdatedAt,
+		Body:      createdChirp.Body,
+		UserID:    createdChirp.UserID,
 	}
+	
 	respondWithJSON(w, http.StatusCreated, structChirp)
 
 }
@@ -143,19 +161,4 @@ func mapDatabaseChirpsToChirps(dbChirps []database.Chirp) ([]Chirp, error) {
 	return chirps, nil
 }
 
-func mapDatabaseChirpToChirps(dbChirp database.Chirp) (Chirp, error) {
-	// Marshal the database chirps into JSON
-	data, err := json.Marshal(dbChirp)
-	if err != nil {
-		return Chirp{}, err
-	}
 
-	// Unmarshal the JSON into the main Chirp struct
-	var chirp Chirp
-	err = json.Unmarshal(data, &chirp)
-	if err != nil {
-		return Chirp{}, err
-	}
-
-	return chirp, nil
-}

@@ -12,11 +12,11 @@ import (
 )
 
 type User struct {
-	ID         uuid.UUID `json:"id"`
-	CreatedAt  time.Time `json:"created_at"`
-	UpdatedAt  time.Time `json:"updated_at"`
-	Email      string    `json:"email"`
-	hashedPass string
+	ID        uuid.UUID `json:"id"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+	Email     string    `json:"email"`
+	Token     string    `json:"token"`
 }
 
 func (cfg *apiConfig) handleUser(w http.ResponseWriter, r *http.Request) {
@@ -44,6 +44,10 @@ func (cfg *apiConfig) handleUser(w http.ResponseWriter, r *http.Request) {
 		Email:          params.Email,
 		HashedPassword: hashedPass,
 	})
+	if err != nil {
+		log.Println("error while creating user in db")
+		respondWithError(w, http.StatusInternalServerError, http.StatusText(http.StatusInternalServerError))
+	}
 	userStruct, err := mapDatabaseUserToUserStruct(user)
 	if err != nil {
 		log.Println("error while converting user db to user struct in handleUser func")

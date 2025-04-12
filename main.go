@@ -16,6 +16,7 @@ type apiConfig struct {
 	fileserverHits atomic.Int32
 	db             *database.Queries
 	platform       string
+	jwtSecret      string
 }
 
 func handleReadiness(w http.ResponseWriter, r *http.Request) {
@@ -31,11 +32,11 @@ func main() {
 	if err != nil {
 		log.Fatalln("error openning db")
 	}
-	dbQueries := database.New(db)
-	platform := os.Getenv("PLATFORM")
+
 	cfg := apiConfig{
-		db:       dbQueries,
-		platform: platform,
+		db:        database.New(db),
+		platform:  os.Getenv("PLATFORM"),
+		jwtSecret: os.Getenv("JWT_SECRET"),
 	}
 	serveMux := http.NewServeMux()
 	serveMux.HandleFunc("GET /admin/healthz", handleReadiness)
