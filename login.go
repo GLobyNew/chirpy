@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/GLobyNew/chirpy/internal/auth"
+	"github.com/GLobyNew/chirpy/internal/database"
 )
 
 const (
@@ -15,9 +16,8 @@ const (
 
 func (cfg *apiConfig) handleLogin(w http.ResponseWriter, r *http.Request) {
 	type parameters struct {
-		Password  string        `json:"password"`
-		Email     string        `json:"email"`
-		ExpiresIn time.Duration `json:"expires_in_seconds"`
+		Password string `json:"password"`
+		Email    string `json:"email"`
 	}
 	// Try decode request
 	decoder := json.NewDecoder(r.Body)
@@ -26,15 +26,6 @@ func (cfg *apiConfig) handleLogin(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		respondWithError(w, http.StatusInternalServerError, http.StatusText(http.StatusInternalServerError))
 		return
-	}
-
-	var ExpiresIn time.Duration
-
-	// Check ExpiresIn value to not be more than DefaultExpiresIn
-	if params.ExpiresIn <= 0 || params.ExpiresIn > DefaultExpiresIn {
-		ExpiresIn = DefaultExpiresIn
-	} else {
-		ExpiresIn = params.ExpiresIn
 	}
 
 	foundUser, err := cfg.db.GetUserByEmail(r.Context(), params.Email)
@@ -50,22 +41,47 @@ func (cfg *apiConfig) handleLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	foundUserStruct, err := mapDatabaseUserToUserStruct(foundUser)
-	if err != nil {
-		log.Println("error while converting user db to user struct in handleUser func")
-		respondWithError(w, http.StatusInternalServerError, http.StatusText(http.StatusInternalServerError))
-		return
+	// Complete the User struct initialization
+	userStruct := User{
+		ID:        foundUser.ID,
+		CreatedAt: foundUser.CreatedAt,
+		UpdatedAt: foundUser.UpdatedAt,
+		Email:     foundUser.Email,
 	}
 
-	jwtToken, err := auth.MakeJWT(foundUser.ID, cfg.jwtSecret, ExpiresIn)
+	// Generate JWT token
+	jwtToken, err := auth.MakeJWT(foundUser.ID, cfg.jwtSecret, DefaultExpiresIn)
 	if err != nil {
 		log.Println("error while creating JWT token")
 		respondWithError(w, http.StatusInternalServerError, http.StatusText(http.StatusInternalServerError))
 		return
 	}
 
-	foundUserStruct.Token = jwtToken
+	userStruct.Token = jwtToken
 
-	respondWithJSON(w, http.StatusOK, foundUserStruct)
+	// Generate refresh token
+	refreshToken, err := auth.MakeRefreshToken()
+	if err != nil {
+		log.Println("error while creating refresh token")
+		respondWithError(w, http.StatusInternalServerError, http.StatusText(http.StatusInternalServerError))
+		return
+	}
+
+	// Store refresh token in the database
+	_, err = cfg.db.CreateRefreshToken(r.Context(), database.CreateRefreshTokenParams{
+		Token:     refreshToken,
+		UserID:    userStruct.ID,
+		ExpiresAt: time.Now().Add(1440 * time.Hour),
+	})
+	if err != nil {
+		log.Println("error while adding refresh token to db")
+		respondWithError(w, http.StatusInternalServerError, http.StatusText(http.StatusInternalServerError))
+		return
+	}
+
+	userStruct.Refresh_Token = refreshToken
+
+	// Respond with the user data
+	respondWithJSON(w, http.StatusOK, userStruct)
 
 }
