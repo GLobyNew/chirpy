@@ -49,29 +49,14 @@ func (cfg *apiConfig) handleUser(w http.ResponseWriter, r *http.Request) {
 		log.Println("error while creating user in db")
 		respondWithError(w, http.StatusInternalServerError, http.StatusText(http.StatusInternalServerError))
 	}
-	userStruct, err := mapDatabaseUserToUserStruct(user)
-	if err != nil {
-		log.Println("error while converting user db to user struct in handleUser func")
-		respondWithError(w, http.StatusInternalServerError, http.StatusText(http.StatusInternalServerError))
+	userStruct := User{
+		ID: user.ID,
+		CreatedAt: user.CreatedAt,
+		UpdatedAt: user.UpdatedAt,
+		Email: user.Email,
 	}
 
 	respondWithJSON(w, http.StatusCreated, userStruct)
 
 }
 
-func mapDatabaseUserToUserStruct(dbUser database.User) (User, error) {
-	// Marshal the database chirps into JSON
-	data, err := json.Marshal(dbUser)
-	if err != nil {
-		return User{}, err
-	}
-
-	// Unmarshal the JSON into the main Chirp struct
-	var user User
-	err = json.Unmarshal(data, &user)
-	if err != nil {
-		return User{}, err
-	}
-
-	return user, nil
-}

@@ -61,7 +61,7 @@ func (cfg *apiConfig) handleGetChirp(w http.ResponseWriter, r *http.Request) {
 		Body:      foundChirp.Body,
 		UserID:    foundChirp.UserID,
 	}
-	
+
 	respondWithJSON(w, http.StatusOK, structChirp)
 
 }
@@ -83,6 +83,7 @@ func (cfg *apiConfig) handleGetChirps(w http.ResponseWriter, r *http.Request) {
 }
 
 func (cfg *apiConfig) handleChirpCreation(w http.ResponseWriter, r *http.Request) {
+	log.SetPrefix("handleChirpCreation: ")
 	tokenString, err := auth.GetBearerToken(r.Header)
 	if err != nil {
 		log.Printf("can't get bearer token : %v", err)
@@ -139,7 +140,7 @@ func (cfg *apiConfig) handleChirpCreation(w http.ResponseWriter, r *http.Request
 		Body:      createdChirp.Body,
 		UserID:    createdChirp.UserID,
 	}
-	
+
 	respondWithJSON(w, http.StatusCreated, structChirp)
 
 }
@@ -160,5 +161,3 @@ func mapDatabaseChirpsToChirps(dbChirps []database.Chirp) ([]Chirp, error) {
 
 	return chirps, nil
 }
-
-

@@ -6,11 +6,10 @@ import (
 	"time"
 
 	"github.com/GLobyNew/chirpy/internal/auth"
-	"github.com/GLobyNew/chirpy/internal/database"
 )
 
 func (cfg *apiConfig) handleRefresh(w http.ResponseWriter, r *http.Request) {
-
+	log.SetPrefix("handleRefresh: ")
 	type resp struct {
 		Token string `json:"token"`
 	}
@@ -41,30 +40,21 @@ func (cfg *apiConfig) handleRefresh(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if tokenInDB.RevokedAt.Valid && tokenInDB.RevokedAt.Time.Before((time.Now())) {
+	if tokenInDB.RevokedAt.Valid {
 		log.Println("token is revoked")
 		respondWithError(w, http.StatusUnauthorized, http.StatusText(http.StatusUnauthorized))
 		return
 	}
 
-	newToken, err := auth.MakeRefreshToken()
+	// Generate JWT token
+	jwtToken, err := auth.MakeJWT(tokenInDB.UserID, cfg.jwtSecret, DefaultExpiresIn)
 	if err != nil {
-		log.Println("error while creating new token")
-		respondWithError(w, http.StatusUnauthorized, http.StatusText(http.StatusUnauthorized))
-		return
-	}
-	createdToken, err := cfg.db.CreateRefreshToken(r.Context(), database.CreateRefreshTokenParams{
-		Token:     newToken,
-		UserID:    tokenInDB.UserID,
-		ExpiresAt: time.Now().Add(1440 * time.Hour),
-	})
-	if err != nil {
-		log.Println("error while adding refresh token to db")
+		log.Println("error while creating JWT token")
 		respondWithError(w, http.StatusInternalServerError, http.StatusText(http.StatusInternalServerError))
 		return
 	}
 
 	respondWithJSON(w, http.StatusOK, resp{
-		Token: createdToken.Token,
+		Token: jwtToken,
 	})
 }

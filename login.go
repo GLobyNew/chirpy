@@ -15,6 +15,7 @@ const (
 )
 
 func (cfg *apiConfig) handleLogin(w http.ResponseWriter, r *http.Request) {
+	log.SetPrefix("handleLogin: ")
 	type parameters struct {
 		Password string `json:"password"`
 		Email    string `json:"email"`
