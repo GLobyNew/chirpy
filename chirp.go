@@ -145,6 +145,52 @@ func (cfg *apiConfig) handleChirpCreation(w http.ResponseWriter, r *http.Request
 
 }
 
+func (cfg *apiConfig) handleDeleteChirp(w http.ResponseWriter, r *http.Request) {
+	chirpID, err := uuid.Parse(r.PathValue("chirpID"))
+	authToken, err := auth.GetBearerToken(r.Header)
+
+	if err != nil {
+		log.Println("bad auth token")
+		respondWithError(w, http.StatusUnauthorized, http.StatusText(http.StatusUnauthorized))
+		return
+
+	}
+
+	userUUID, err := auth.ValidateJWT(authToken, cfg.jwtSecret)
+	if err != nil {
+		log.Println("fail while validating JWT")
+		respondWithError(w, http.StatusUnauthorized, http.StatusText(http.StatusUnauthorized))
+		return
+	}
+
+	user, err := cfg.db.GetUserByUUID(r.Context(), userUUID)
+	if err != nil {
+		log.Println("error while getting user from db")
+		respondWithError(w, http.StatusInternalServerError, "error while getting user from db")
+		return
+	}
+
+	chirp, err := cfg.db.GetChirpByID(r.Context(), chirpID)
+	if err != nil {
+		log.Println("error while getting chirp from db")
+		respondWithError(w, http.StatusNotFound, "chirp not found")
+		return
+	}
+	if chirp.UserID != user.ID {
+		log.Println("user id from db and token do not match")
+		respondWithError(w, http.StatusForbidden, http.StatusText(http.StatusForbidden))
+		return
+	}
+	err = cfg.db.DeleteChirpByID(r.Context(), chirpID)
+	if err != nil {
+		log.Println("error while deleting chirp from db")
+		respondWithError(w, http.StatusInternalServerError, "error while deleting chirp from db")
+		return
+	}
+
+	respondWithJSON(w, http.StatusNoContent, nil)
+}
+
 func mapDatabaseChirpsToChirps(dbChirps []database.Chirp) ([]Chirp, error) {
 	// Marshal the database chirps into JSON
 	data, err := json.Marshal(dbChirps)
