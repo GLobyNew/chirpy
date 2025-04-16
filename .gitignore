@@ -8,7 +8,7 @@ chirpy
 *.dll
 *.so
 *.dylib
-
+.vscode
 # macOS
 .DS_Store
 
