@@ -18,6 +18,7 @@ type User struct {
 	Email         string    `json:"email"`
 	Token         string    `json:"token"`
 	Refresh_Token string    `json:"refresh_token"`
+	Is_Chirpy_Red bool      `json:"is_chirpy_red"`
 }
 
 func (cfg *apiConfig) handleUser(w http.ResponseWriter, r *http.Request) {
@@ -50,10 +51,11 @@ func (cfg *apiConfig) handleUser(w http.ResponseWriter, r *http.Request) {
 		respondWithError(w, http.StatusInternalServerError, http.StatusText(http.StatusInternalServerError))
 	}
 	userStruct := User{
-		ID:        user.ID,
-		CreatedAt: user.CreatedAt,
-		UpdatedAt: user.UpdatedAt,
-		Email:     user.Email,
+		ID:            user.ID,
+		CreatedAt:     user.CreatedAt,
+		UpdatedAt:     user.UpdatedAt,
+		Email:         user.Email,
+		Is_Chirpy_Red: user.ChirpyRed,
 	}
 
 	respondWithJSON(w, http.StatusCreated, userStruct)
@@ -121,10 +123,11 @@ func (cfg *apiConfig) handleUpdateUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	userStruct := User{
-		ID:        user.ID,
-		CreatedAt: user.CreatedAt,
-		UpdatedAt: user.UpdatedAt,
-		Email:     user.Email,
+		ID:            user.ID,
+		CreatedAt:     user.CreatedAt,
+		UpdatedAt:     user.UpdatedAt,
+		Email:         user.Email,
+		Is_Chirpy_Red: user.ChirpyRed,
 	}
 
 	respondWithJSON(w, http.StatusOK, userStruct)

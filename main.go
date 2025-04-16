@@ -50,6 +50,7 @@ func main() {
 	serveMux.HandleFunc("PUT /api/users", cfg.handleUpdateUser)
 	serveMux.HandleFunc("POST /api/login", cfg.handleLogin)
 	serveMux.HandleFunc("POST /api/chirps", cfg.handleChirpCreation)
+	serveMux.HandleFunc("POST /api/polka/webhooks", cfg.handlePolkaWebhook)
 	serveMux.HandleFunc("GET /api/chirps", cfg.handleGetChirps)
 	serveMux.HandleFunc("GET /api/chirps/{chirpID}", cfg.handleGetChirp)
 	serveMux.HandleFunc("DELETE /api/chirps/{chirpID}", cfg.handleDeleteChirp)

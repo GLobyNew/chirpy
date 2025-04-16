@@ -44,10 +44,11 @@ func (cfg *apiConfig) handleLogin(w http.ResponseWriter, r *http.Request) {
 
 	// Complete the User struct initialization
 	userStruct := User{
-		ID:        foundUser.ID,
-		CreatedAt: foundUser.CreatedAt,
-		UpdatedAt: foundUser.UpdatedAt,
-		Email:     foundUser.Email,
+		ID:            foundUser.ID,
+		CreatedAt:     foundUser.CreatedAt,
+		UpdatedAt:     foundUser.UpdatedAt,
+		Email:         foundUser.Email,
+		Is_Chirpy_Red: foundUser.ChirpyRed,
 	}
 
 	// Generate JWT token

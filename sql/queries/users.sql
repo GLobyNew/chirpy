@@ -23,5 +23,12 @@ SET updated_at = NOW(),
 WHERE id = $3
 RETURNING *;
 
+-- name: UpgradeToChirpyRed :one
+UPDATE users
+SET updated_at = NOW(),
+    chirpy_red = TRUE
+WHERE id = $1
+RETURNING *;
+
 -- name: DeleteAllUsers :exec
 DELETE FROM users;
