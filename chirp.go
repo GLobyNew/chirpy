@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"sort"
 	"strings"
 	"time"
 
@@ -67,17 +68,52 @@ func (cfg *apiConfig) handleGetChirp(w http.ResponseWriter, r *http.Request) {
 }
 
 func (cfg *apiConfig) handleGetChirps(w http.ResponseWriter, r *http.Request) {
-	dbChirps, err := cfg.db.GetAllChirps(r.Context())
-	if err != nil {
-		respondWithError(w, http.StatusInternalServerError, http.StatusText(http.StatusInternalServerError))
-		return
+
+	author_id := r.URL.Query().Get("author_id")
+	sortQuery := r.URL.Query().Get("sort")
+	if len(sortQuery) == 0 || (sortQuery != "desc" && sortQuery != "asc") {
+		sortQuery = "asc"
+	}
+
+	var dbChirps []database.Chirp
+	var err error
+
+	// Check if author_id is not empty
+	if len(author_id) == 0 {
+		dbChirps, err = cfg.db.GetAllChirps(r.Context())
+		if err != nil {
+			respondWithError(w, http.StatusInternalServerError, http.StatusText(http.StatusInternalServerError))
+			return
+		}
+	} else {
+		authorID, err := uuid.Parse(author_id)
+		if err != nil {
+			log.Println("error while parsing author_id")
+			respondWithError(w, http.StatusBadRequest, "invalid author ID")
+			return
+		}
+
+		dbChirps, err = cfg.db.GetChirpsByUserID(r.Context(), authorID)
+		if err != nil {
+			log.Println("error while getting chirps from db")
+			respondWithError(w, http.StatusInternalServerError, "error while getting chirps from db")
+			return
+		}
 	}
 
 	chirps, err := mapDatabaseChirpsToChirps(dbChirps)
 	if err != nil {
-		respondWithError(w, http.StatusInternalServerError, http.StatusText(http.StatusInternalServerError))
+		log.Println("error while mapping database chirps to chirps")
+		respondWithError(w, http.StatusInternalServerError, "error while mapping database chirps to chirps")
 		return
 	}
+
+	sort.Slice(chirps, func(i, j int) bool {
+		if sortQuery == "asc" {
+			return chirps[i].CreatedAt.Before(chirps[j].CreatedAt)
+		}
+		return chirps[i].CreatedAt.After(chirps[j].CreatedAt)
+	})
 
 	respondWithJSON(w, http.StatusOK, chirps)
 }
@@ -192,18 +228,15 @@ func (cfg *apiConfig) handleDeleteChirp(w http.ResponseWriter, r *http.Request) 
 }
 
 func mapDatabaseChirpsToChirps(dbChirps []database.Chirp) ([]Chirp, error) {
-	// Marshal the database chirps into JSON
-	data, err := json.Marshal(dbChirps)
-	if err != nil {
-		return nil, err
+	chirps := make([]Chirp, len(dbChirps))
+	for i, dbChirp := range dbChirps {
+		chirps[i] = Chirp{
+			ID:        dbChirp.ID,
+			CreatedAt: dbChirp.CreatedAt,
+			UpdatedAt: dbChirp.UpdatedAt,
+			Body:      dbChirp.Body,
+			UserID:    dbChirp.UserID,
+		}
 	}
-
-	// Unmarshal the JSON into the main Chirp struct
-	var chirps []Chirp
-	err = json.Unmarshal(data, &chirps)
-	if err != nil {
-		return nil, err
-	}
-
 	return chirps, nil
 }
