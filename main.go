@@ -17,6 +17,7 @@ type apiConfig struct {
 	db             *database.Queries
 	platform       string
 	jwtSecret      string
+	polka_key      string
 }
 
 func handleReadiness(w http.ResponseWriter, r *http.Request) {
@@ -37,6 +38,7 @@ func main() {
 		db:        database.New(db),
 		platform:  os.Getenv("PLATFORM"),
 		jwtSecret: os.Getenv("JWT_SECRET"),
+		polka_key: os.Getenv("POLKA_KEY"),
 	}
 	serveMux := http.NewServeMux()
 	serveMux.HandleFunc("GET /admin/healthz", handleReadiness)
